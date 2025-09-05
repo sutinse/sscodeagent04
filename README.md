@@ -81,8 +81,8 @@ java -jar target/quarkus-app/quarkus-run.jar
 
 ## Technical Details
 
-- **Framework**: Quarkus 3.8.1
-- **Java Version**: 17
+- **Framework**: Quarkus 3.26.2
+- **Java Version**: 21
 - **XML Processing**: Jackson XML mapper with streaming support
 - **JSON Comparison**: JSONAssert with lenient comparison mode
 - **Output Format**: Markdown with clear difference reporting
