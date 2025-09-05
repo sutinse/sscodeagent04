@@ -5,7 +5,7 @@ Always reference these instructions first and fallback to search or bash command
 ## Quick Start and Working Effectively
 
 Bootstrap, build, and test the repository:
-- Check Java version: `java -version` (requires Java 17)
+- Check Java version: `java -version` (requires Java 21)
 - `./mvnw clean compile` -- initial compilation takes ~50 seconds for dependency download, subsequent builds ~5 seconds. NEVER CANCEL.
 - `./mvnw clean package` -- full build takes ~25 seconds after dependencies downloaded. NEVER CANCEL.
 - `./mvnw test` -- test suite takes ~10 seconds. NEVER CANCEL. Set timeout to 30+ seconds.
@@ -89,7 +89,7 @@ All require `./mvnw package` first:
 ```
 /
 ├── README.md                           # Comprehensive project documentation
-├── pom.xml                            # Maven configuration, Java 17, Quarkus 3.8.1
+├── pom.xml                            # Maven configuration, Java 21, Quarkus 3.26.2
 ├── mvnw, mvnw.cmd                     # Maven wrapper scripts
 ├── example_person.xml                 # Sample XML for testing
 ├── example_person.json                # Sample JSON for testing
@@ -115,8 +115,8 @@ All require `./mvnw package` first:
 ## Common Tasks and Reference
 
 ### Dependency Information
-- **Framework**: Quarkus 3.8.1 (Supersonic Subatomic Java)
-- **Java Version**: 17 (OpenJDK Temurin 17.0.16+8)
+- **Framework**: Quarkus 3.26.2 (Supersonic Subatomic Java)
+- **Java Version**: 21 (OpenJDK Temurin 21.0.8+9)
 - **Key Dependencies**: Jackson XML, JSONAssert, Commons FileUpload
 - **Test Framework**: JUnit 5 with RestAssured
 
@@ -139,7 +139,7 @@ All examples use provided sample files:
 ## Troubleshooting
 
 ### Common Issues
-- **Build Failures**: Ensure Java 17 is installed (`java -version`)
+- **Build Failures**: Ensure Java 21 is installed (`java -version`)
 - **Dependency Download**: First build may take 60+ seconds for Maven dependencies
 - **Native Build**: Requires Docker, takes 3+ minutes - never cancel
 - **Port Conflicts**: Default port 8080, use `quarkus.http.port` to change
