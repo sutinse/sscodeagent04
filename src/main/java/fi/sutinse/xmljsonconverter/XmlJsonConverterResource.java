@@ -21,26 +21,15 @@ public class XmlJsonConverterResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
     public Response convertAndCompareJson(ConversionRequest request) {
-        try {
-            // Create InputStreams from the string content
-            InputStream xmlStream = new ByteArrayInputStream(request.xmlContent.getBytes(StandardCharsets.UTF_8));
-            InputStream jsonStream = new ByteArrayInputStream(request.jsonContent.getBytes(StandardCharsets.UTF_8));
-            
-            FileUploadForm form = new FileUploadForm();
-            form.xmlFile = xmlStream;
-            form.jsonFile = jsonStream;
-            
-            String result = xmlJsonService.convertXmlToJsonAndCompare(form);
-            return Response.ok(result).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(e.getMessage())
-                    .build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Internal server error: " + e.getMessage())
-                    .build();
-        }
+        // Create InputStreams from the string content
+        InputStream xmlStream = new ByteArrayInputStream(request.xmlContent().getBytes(StandardCharsets.UTF_8));
+        InputStream jsonStream = new ByteArrayInputStream(request.jsonContent().getBytes(StandardCharsets.UTF_8));
+        
+        FileUploadForm form = new FileUploadForm(xmlStream, jsonStream);
+        
+        // Service now handles all errors internally and returns formatted result
+        String result = xmlJsonService.convertXmlToJsonAndCompare(form);
+        return Response.ok(result).build();
     }
 
     @POST
@@ -50,32 +39,37 @@ public class XmlJsonConverterResource {
     public Response convertAndCompareFiles(
             @FormParam("xml") InputStream xmlFile,
             @FormParam("json") InputStream jsonFile) {
-        try {
-            if (xmlFile == null || jsonFile == null) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity("Both XML and JSON files are required")
-                        .build();
-            }
-
-            FileUploadForm form = new FileUploadForm();
-            form.xmlFile = xmlFile;
-            form.jsonFile = jsonFile;
-            
-            String result = xmlJsonService.convertXmlToJsonAndCompare(form);
-            return Response.ok(result).build();
-        } catch (IllegalArgumentException e) {
+        if (xmlFile == null || jsonFile == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(e.getMessage())
-                    .build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Internal server error: " + e.getMessage())
+                    .entity("Both XML and JSON files are required")
                     .build();
         }
+
+        FileUploadForm form = new FileUploadForm(xmlFile, jsonFile);
+        
+        // Service now handles all errors internally and returns formatted result
+        String result = xmlJsonService.convertXmlToJsonAndCompare(form);
+        return Response.ok(result).build();
     }
 
-    public static class ConversionRequest {
-        public String xmlContent;
-        public String jsonContent;
+    /**
+     * Record representing a conversion request with XML and JSON content.
+     * Uses modern Java record syntax for immutable data transfer.
+     * 
+     * @param xmlContent the XML content as string
+     * @param jsonContent the JSON content as string
+     */
+    public record ConversionRequest(String xmlContent, String jsonContent) {
+        /**
+         * Compact constructor with validation.
+         */
+        public ConversionRequest {
+            if (xmlContent == null || xmlContent.trim().isEmpty()) {
+                throw new IllegalArgumentException("XML content is required");
+            }
+            if (jsonContent == null || jsonContent.trim().isEmpty()) {
+                throw new IllegalArgumentException("JSON content is required");
+            }
+        }
     }
 }

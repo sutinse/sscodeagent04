@@ -9,6 +9,7 @@ import org.skyscreamer.jsonassert.JSONCompareMode;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 @ApplicationScoped
 public class XmlJsonService {
@@ -16,30 +17,55 @@ public class XmlJsonService {
     private final XmlMapper xmlMapper = new XmlMapper();
     private final ObjectMapper jsonMapper = new ObjectMapper();
 
-    public String convertXmlToJsonAndCompare(FileUploadForm form) throws Exception {
-        validateInputs(form);
-
-        // Convert XML to JSON using streaming for memory efficiency
-        String convertedJson = convertXmlToJsonStream(form.xmlFile);
-
-        // Read provided JSON
-        String providedJson = readJsonStream(form.jsonFile);
-
-        // Compare the JSONs
-        String comparisonResult = compareJsons(convertedJson, providedJson);
-
-        return comparisonResult;
+    /**
+     * Converts XML to JSON and compares with provided JSON.
+     * Uses sealed types for better type safety and modern error handling.
+     */
+    public String convertXmlToJsonAndCompare(FileUploadForm form) {
+        return processConversion(form).toResponse();
     }
 
+    /**
+     * Internal method that returns a ConversionResult for better type safety.
+     */
+    private ConversionResult processConversion(FileUploadForm form) {
+        try {
+            validateInputs(form);
+
+            // Convert XML to JSON using streaming for memory efficiency
+            String convertedJson = convertXmlToJsonStream(form.xmlFile());
+
+            // Read provided JSON using optimized streaming
+            String providedJson = readJsonStreamOptimized(form.jsonFile());
+
+            // Compare the JSONs and generate report
+            String report = compareJsonsWithModernFormatting(convertedJson, providedJson);
+
+            return new ConversionResult.Success(convertedJson, providedJson, report);
+
+        } catch (IllegalArgumentException e) {
+            return new ConversionResult.Failure("Invalid input: " + e.getMessage(), e);
+        } catch (Exception e) {
+            return new ConversionResult.Failure("Processing error: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Validates inputs using modern Java validation patterns.
+     */
     private void validateInputs(FileUploadForm form) {
-        if (form.xmlFile == null) {
+        if (form.xmlFile() == null) {
             throw new IllegalArgumentException("XML file is required");
         }
-        if (form.jsonFile == null) {
+        if (form.jsonFile() == null) {
             throw new IllegalArgumentException("JSON file is required");
         }
     }
 
+    /**
+     * Converts XML to JSON using streaming for better memory efficiency.
+     * Uses try-with-resources for automatic resource management.
+     */
     private String convertXmlToJsonStream(InputStream xmlInputStream) throws Exception {
         try (xmlInputStream) {
             // Use Jackson XML mapper to read XML and convert to JSON
@@ -49,71 +75,136 @@ public class XmlJsonService {
         }
     }
 
-    private String readJsonStream(InputStream jsonInputStream) throws Exception {
+    /**
+     * Reads JSON using optimized streaming for better performance.
+     * Uses modern stream operations for memory efficiency.
+     */
+    private String readJsonStreamOptimized(InputStream jsonInputStream) throws Exception {
         try (jsonInputStream;
-             BufferedReader reader = new BufferedReader(
+             var reader = new BufferedReader(
                  new InputStreamReader(jsonInputStream, StandardCharsets.UTF_8))) {
             
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line).append('\n');
-            }
+            // Use stream operations for more efficient processing
+            String jsonContent = reader.lines()
+                    .collect(StringBuilder::new, 
+                            (sb, line) -> sb.append(line).append('\n'),
+                            StringBuilder::append)
+                    .toString();
             
-            // Validate that it's proper JSON
-            JsonNode jsonNode = jsonMapper.readTree(sb.toString());
+            // Validate that it's proper JSON and normalize formatting
+            JsonNode jsonNode = jsonMapper.readTree(jsonContent);
             return jsonMapper.writeValueAsString(jsonNode);
         }
     }
 
-    private String compareJsons(String convertedJson, String providedJson) throws Exception {
-        StringBuilder result = new StringBuilder();
-        result.append("# XML to JSON Conversion and Comparison Report\n\n");
+    /**
+     * Compares JSONs and generates a report using text blocks and pattern matching.
+     * Uses modern Java features for cleaner code and better performance.
+     */
+    private String compareJsonsWithModernFormatting(String convertedJson, String providedJson) {
+        var result = new StringBuilder();
+        
+        // Use text blocks for better readability (Java 13+)
+        result.append("""
+                # XML to JSON Conversion and Comparison Report
+                
+                """);
 
-        try {
-            // Use JSONAssert to compare with lenient mode (ignores whitespace and order)
-            JSONAssert.assertEquals(providedJson, convertedJson, JSONCompareMode.LENIENT);
-            
-            result.append("## ✅ Comparison Result: MATCH\n\n");
-            result.append("The converted JSON matches the provided JSON (ignoring whitespace and field order).\n\n");
-
-        } catch (AssertionError e) {
-            result.append("## ❌ Comparison Result: DIFFERENCES FOUND\n\n");
-            result.append("### Differences:\n\n");
-            result.append(e.getMessage()).append("\n\n");
-        } catch (Exception e) {
-            result.append("## ⚠️ Comparison Error\n\n");
-            result.append("Error during JSON comparison: ").append(e.getMessage()).append("\n\n");
-        }
+        // Enhanced comparison with better error handling
+        ComparisonOutcome outcome = performComparison(convertedJson, providedJson);
+        
+        // Pattern matching for cleaner control flow (Java 17+)
+        result.append(switch (outcome) {
+            case ComparisonOutcome.Match() -> """
+                    ## ✅ Comparison Result: MATCH
+                    
+                    The converted JSON matches the provided JSON (ignoring whitespace and field order).
+                    
+                    """;
+            case ComparisonOutcome.Difference(var message) -> """
+                    ## ❌ Comparison Result: DIFFERENCES FOUND
+                    
+                    ### Differences:
+                    
+                    %s
+                    
+                    """.formatted(message);
+            case ComparisonOutcome.Error(var errorMessage) -> """
+                    ## ⚠️ Comparison Error
+                    
+                    Error during JSON comparison: %s
+                    
+                    """.formatted(errorMessage);
+        });
 
         // Add previews of both JSONs (truncated for large files)
-        result.append("## Converted JSON Preview\n\n");
-        result.append("```json\n");
-        result.append(truncateForDisplay(formatJson(convertedJson)));
-        result.append("\n```\n\n");
-
-        result.append("## Provided JSON Preview\n\n");
-        result.append("```json\n");
-        result.append(truncateForDisplay(formatJson(providedJson)));
-        result.append("\n```\n");
+        result.append(formatJsonPreview("Converted JSON Preview", convertedJson));
+        result.append(formatJsonPreview("Provided JSON Preview", providedJson));
 
         return result.toString();
     }
 
-    private String formatJson(String json) {
+    /**
+     * Performs JSON comparison and returns a sealed type result.
+     */
+    private ComparisonOutcome performComparison(String convertedJson, String providedJson) {
         try {
-            JsonNode jsonNode = jsonMapper.readTree(json);
-            return jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
+            JSONAssert.assertEquals(providedJson, convertedJson, JSONCompareMode.LENIENT);
+            return new ComparisonOutcome.Match();
+        } catch (AssertionError e) {
+            return new ComparisonOutcome.Difference(e.getMessage());
         } catch (Exception e) {
-            return json; // Return original if formatting fails
+            return new ComparisonOutcome.Error(e.getMessage());
         }
     }
 
+    /**
+     * Sealed interface for comparison outcomes.
+     */
+    private sealed interface ComparisonOutcome
+            permits ComparisonOutcome.Match, ComparisonOutcome.Difference, ComparisonOutcome.Error {
+        record Match() implements ComparisonOutcome {}
+        record Difference(String message) implements ComparisonOutcome {}
+        record Error(String message) implements ComparisonOutcome {}
+    }
+
+    /**
+     * Formats JSON preview using text blocks and efficient string operations.
+     */
+    private String formatJsonPreview(String title, String json) {
+        return """
+                ## %s
+                
+                ```json
+                %s
+                ```
+                
+                """.formatted(title, truncateForDisplay(formatJson(json)));
+    }
+
+    /**
+     * Formats JSON with pretty printing, using Optional for better null handling.
+     */
+    private String formatJson(String json) {
+        return Optional.ofNullable(json)
+                .map(j -> {
+                    try {
+                        JsonNode jsonNode = jsonMapper.readTree(j);
+                        return jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
+                    } catch (Exception e) {
+                        return j; // Return original if formatting fails
+                    }
+                })
+                .orElse("null");
+    }
+
+    /**
+     * Truncates content for display using efficient string operations and modern utilities.
+     */
     private String truncateForDisplay(String content) {
         final int MAX_LENGTH = 1000;
-        if (content.length() <= MAX_LENGTH) {
-            return content;
-        }
-        return content.substring(0, MAX_LENGTH) + "\n... (truncated for display)";
+        return content.length() <= MAX_LENGTH 
+                ? content 
+                : content.substring(0, MAX_LENGTH) + "\n... (truncated for display)";
     }
 }
