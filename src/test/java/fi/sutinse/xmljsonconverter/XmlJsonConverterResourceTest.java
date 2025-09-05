@@ -11,10 +11,13 @@ public class XmlJsonConverterResourceTest {
 
     @Test
     public void testJsonEndpointWithMatchingData() {
-        String requestBody = "{\n" +
-                "  \"xmlContent\": \"<person><name>John</name><age>30</age></person>\",\n" +
-                "  \"jsonContent\": \"{\\\"name\\\":\\\"John\\\",\\\"age\\\":\\\"30\\\"}\"\n" +
-                "}";
+        // Using text blocks (Java 13+) for better readability
+        String requestBody = """
+                {
+                  "xmlContent": "<person><name>John</name><age>30</age></person>",
+                  "jsonContent": "{\\"name\\":\\"John\\",\\"age\\":\\"30\\"}"
+                }
+                """;
 
         given()
                 .when()
@@ -28,10 +31,12 @@ public class XmlJsonConverterResourceTest {
 
     @Test
     public void testJsonEndpointWithDifferentData() {
-        String requestBody = "{\n" +
-                "  \"xmlContent\": \"<person><name>John</name><age>30</age></person>\",\n" +
-                "  \"jsonContent\": \"{\\\"name\\\":\\\"Jane\\\",\\\"age\\\":\\\"25\\\"}\"\n" +
-                "}";
+        String requestBody = """
+                {
+                  "xmlContent": "<person><name>John</name><age>30</age></person>",
+                  "jsonContent": "{\\"name\\":\\"Jane\\",\\"age\\":\\"25\\"}"
+                }
+                """;
 
         given()
                 .when()
@@ -45,9 +50,11 @@ public class XmlJsonConverterResourceTest {
 
     @Test
     public void testJsonEndpointWithMissingXml() {
-        String requestBody = "{\n" +
-                "  \"jsonContent\": \"{\\\"name\\\":\\\"John\\\",\\\"age\\\":\\\"30\\\"}\"\n" +
-                "}";
+        String requestBody = """
+                {
+                  "jsonContent": "{\\"name\\":\\"John\\",\\"age\\":\\"30\\"}"
+                }
+                """;
 
         given()
                 .when()
@@ -55,15 +62,17 @@ public class XmlJsonConverterResourceTest {
                 .body(requestBody)
                 .post("/convert/json")
                 .then()
-                .statusCode(500); // This will be an error because xmlContent is null
+                .statusCode(400); // Now correctly returns 400 due to improved validation in record
     }
 
     @Test
     public void testJsonEndpointWithComplexXml() {
-        String requestBody = "{\n" +
-                "  \"xmlContent\": \"<company><employees><employee><name>John</name><department>IT</department></employee><employee><name>Jane</name><department>HR</department></employee></employees></company>\",\n" +
-                "  \"jsonContent\": \"{\\\"employees\\\":{\\\"employee\\\":[{\\\"name\\\":\\\"John\\\",\\\"department\\\":\\\"IT\\\"},{\\\"name\\\":\\\"Jane\\\",\\\"department\\\":\\\"HR\\\"}]}}\"\n" +
-                "}";
+        String requestBody = """
+                {
+                  "xmlContent": "<company><employees><employee><name>John</name><department>IT</department></employee><employee><name>Jane</name><department>HR</department></employee></employees></company>",
+                  "jsonContent": "{\\"employees\\":{\\"employee\\":[{\\"name\\":\\"John\\",\\"department\\":\\"IT\\"},{\\"name\\":\\"Jane\\",\\"department\\":\\"HR\\"}]}}"
+                }
+                """;
 
         given()
                 .when()
