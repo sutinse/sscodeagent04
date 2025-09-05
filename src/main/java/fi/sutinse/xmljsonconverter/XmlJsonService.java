@@ -50,6 +50,9 @@ public class XmlJsonService {
         }
     }
 
+    /**
+     * Validates inputs using modern Java validation patterns.
+     */
     private void validateInputs(FileUploadForm form) {
         if (form.xmlFile() == null) {
             throw new IllegalArgumentException("XML file is required");
@@ -196,7 +199,7 @@ public class XmlJsonService {
     }
 
     /**
-     * Truncates content for display using efficient string operations and ternary.
+     * Truncates content for display using efficient string operations and modern utilities.
      */
     private String truncateForDisplay(String content) {
         final int MAX_LENGTH = 1000;
